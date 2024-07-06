@@ -42,12 +42,13 @@ function lovr.draw( pass )
 
 	UI2D.Begin( "main", 0, 450 )
 	UI2D.Label( "game state:" .. game_state )
+	UI2D.Label( tostring(window.tex_w) )
 	if UI2D.Button( "Shuffle..." ) then
 		game_state = e_game_state.init
 	end
 	UI2D.End( pass )
 
-	Game.Render( pass )
+	Game.Render()
 
 	pass:setColor( 0.043, 0.411, 0.168 )
 	pass:plane( window.w / 2, window.h / 2, 0, window.tex_w, window.tex_h )

@@ -14,6 +14,23 @@ local function GetSuit( str )
 	end
 end
 
+local function UpdateMetrics()
+	metrics.card_w = 0.089 * window.tex_w
+	metrics.card_h = 0.1935 * window.tex_h
+	metrics.slot_start_left = 0.018 * window.tex_w
+	metrics.slot_start_top = 0.037 * window.tex_h
+	metrics.slot_card_offset_left = 0.005 * window.tex_w
+	metrics.slot_card_offset_top = 0.008 * window.tex_h
+	metrics.slot_width = 0.099 * window.tex_w
+	metrics.slot_height = 0.208 * window.tex_h
+	metrics.slot_between_gap = 0.015 * window.tex_w
+	metrics.freecell_homecell_gap = 0.084 * window.tex_w
+	metrics.card_between_vertical_gap = 0.0464 * window.tex_h
+	metrics.stack_first_offset_left = 0.078 * window.tex_w
+	metrics.stack_first_offset_top = 0.2992 * window.tex_h
+	metrics.stacks_between_gap = 0.019 * window.tex_h
+end
+
 local function WindowWasResized()
 	local w, h = lovr.system.getWindowDimensions()
 	if w ~= window.w or h ~= window.h then
@@ -21,6 +38,7 @@ local function WindowWasResized()
 		window.h = h
 		window.tex_w = w
 		window.tex_h = h
+
 
 		-- Do aspect correction
 		if (window.w / window.h) > window.aspect_multiplier then
@@ -31,27 +49,11 @@ local function WindowWasResized()
 			window.tex_h = window.w / window.aspect_multiplier
 		end
 
+		UpdateMetrics()
+
 		-- Re-generate game texture/pass
 		window.tex = lovr.graphics.newTexture( window.tex_w, window.tex_h )
 		window.pass = lovr.graphics.newPass( window.tex )
-
-		-- Update metrics
-		metrics = {
-			card_w = 0.089 * window.tex_w,
-			card_h = 0.1935 * window.tex_h,
-			slot_start_left = 0.018 * window.tex_w,
-			slot_start_top = 0.037 * window.tex_h,
-			slot_card_offset_left = 0.005 * window.tex_w,
-			slot_card_offset_top = 0.008 * window.tex_h,
-			slot_width = 0.099 * window.tex_w,
-			slot_height = 0.208 * window.tex_h,
-			slot_between_gap = 0.015 * window.tex_w,
-			freecell_homecell_gap = 0.084 * window.tex_w,
-			card_between_vertical_gap = 0.0464 * window.tex_h,
-			stack_first_offset_left = 0.078 * window.tex_w,
-			stack_first_offset_top = 0.2992 * window.tex_h,
-			stacks_between_gap = 0.019 * window.tex_w,
-		}
 
 		return true
 	end
@@ -61,13 +63,11 @@ end
 
 local function DrawCard( card, x, y )
 	window.pass:setColor( 1, 1, 1 )
-	if card.is_highlighted then
-		window.pass:setMaterial( highlight_tex )
-		window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w + 10, -metrics.card_h - 10 )
-	end
 	window.pass:setMaterial( card.tex )
 	window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w, -metrics.card_h )
 	if card.is_highlighted then
+		window.pass:setMaterial( highlight_tex )
+		window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w + 10, -metrics.card_h - 10 )
 		window.pass:setColor( 0, 0, 0 )
 		window.pass:setMaterial()
 		window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w, -metrics.card_h, 0, 0, 0, 0, "line" )
@@ -129,7 +129,7 @@ local function PointInRect( px, py, rx, ry, rw, rh )
 end
 
 local function LoadTextures()
-	highlight_tex = lovr.graphics.newTexture( "res/misc/highlight.png" )
+	highlight_tex = lovr.graphics.newTexture( "res/misc/highlight.png", {mipmaps = false} )
 
 	local items = lovr.filesystem.getDirectoryItems( "res" )
 
@@ -144,7 +144,7 @@ local function LoadTextures()
 			end
 
 			local suit = GetSuit( cur )
-			local tex = lovr.graphics.newTexture( "res/" .. items[ i ] )
+			local tex = lovr.graphics.newTexture( "res/" .. items[ i ], { mipmaps = 2 } )
 			local card = { rank = rank, suit = suit, tex = tex }
 			table.insert( deck_ordered, card )
 		end
@@ -152,7 +152,6 @@ local function LoadTextures()
 end
 
 local function TrackMouseState()
-	
 	-- Mouse coords: account for aspect ratio
 	local mx, my = lovr.system.getMousePosition()
 	mouse.x, mouse.y = mx, my
@@ -260,7 +259,8 @@ function Game.Update()
 	end
 end
 
-function Game.Render( pass )
+function Game.Render()
+	window.pass:setSampler( 'linear' )
 	window.pass:reset()
 	window.pass:setProjection( 1, mat4():orthographic( window.pass:getDimensions() ) )
 
