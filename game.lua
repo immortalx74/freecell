@@ -28,7 +28,7 @@ local function UpdateMetrics()
 	metrics.card_between_vertical_gap = 0.0464 * window.tex_h
 	metrics.stack_first_offset_left = 0.078 * window.tex_w
 	metrics.stack_first_offset_top = 0.2992 * window.tex_h
-	metrics.stacks_between_gap = 0.019 * window.tex_h
+	metrics.stacks_between_gap = 0.019 * window.tex_w
 end
 
 local function WindowWasResized()
@@ -38,7 +38,6 @@ local function WindowWasResized()
 		window.h = h
 		window.tex_w = w
 		window.tex_h = h
-
 
 		-- Do aspect correction
 		if (window.w / window.h) > window.aspect_multiplier then
@@ -108,6 +107,9 @@ local function DrawTableau()
 	end
 end
 
+local function DrawMovingStack()
+end
+
 local function Shuffle( t ) -- https://gist.github.com/Uradamus/10323382?permalink_comment_id=3149506#gistcomment-3149506
 	local tbl = {}
 	for i = 1, #t do
@@ -129,7 +131,7 @@ local function PointInRect( px, py, rx, ry, rw, rh )
 end
 
 local function LoadTextures()
-	highlight_tex = lovr.graphics.newTexture( "res/misc/highlight.png", {mipmaps = false} )
+	highlight_tex = lovr.graphics.newTexture( "res/misc/highlight.png", { mipmaps = false } )
 
 	local items = lovr.filesystem.getDirectoryItems( "res" )
 
@@ -145,7 +147,7 @@ local function LoadTextures()
 
 			local suit = GetSuit( cur )
 			local tex = lovr.graphics.newTexture( "res/" .. items[ i ], { mipmaps = 2 } )
-			local card = { rank = rank, suit = suit, tex = tex }
+			local card = { rank = rank, suit = suit, tex = tex, id = rank .. suit }
 			table.insert( deck_ordered, card )
 		end
 	end
@@ -164,17 +166,17 @@ local function TrackMouseState()
 
 	-- Left button state
 	if lovr.system.isMouseDown( 1 ) then
-		if mouse.prev == 0 then
-			mouse.prev = 1
-			mouse.curr = 1
+		if mouse.button_prev == 0 then
+			mouse.button_prev = 1
+			mouse.button_curr = 1
 			mouse.state = e_mouse_state.clicked
 		else
-			mouse.prev = 1
-			mouse.curr = 0
+			mouse.button_prev = 1
+			mouse.button_curr = 0
 			mouse.state = e_mouse_state.held
 		end
 	else
-		mouse.prev = 0
+		mouse.button_prev = 0
 		mouse.state = e_mouse_state.released
 	end
 end
@@ -207,7 +209,7 @@ local function GetStackHoveredCard()
 	end
 
 	if index1 then
-		tableau[ index1 ][ index2 ].is_highlighted = true
+		-- tableau[ index1 ][ index2 ].is_highlighted = true
 		return tableau[ index1 ][ index2 ]
 	end
 	return nil
@@ -230,24 +232,34 @@ function Game.Update()
 	TrackMouseState()
 
 	if game_state == e_game_state.init then
+		-- Clear state
 		deck_session = {}
+		moving_stack = {}
+		tableau = {}
+		home_cells = {}
+		free_cells = {}
 		deck_session = Shuffle( deck_ordered )
 
-
 		-- Populate tableau
-		tableau = {} -- clear board first...
 		local index = 1
 
 		for stack = 1, 8 do
 			local stack_table = {}
+
+			local x = metrics.stack_first_offset_left + ((stack - 1) * (metrics.card_w + metrics.stacks_between_gap))
+			local y = metrics.stack_first_offset_top
+
 			for card = 1, 7 do
 				if card == 7 and stack > 4 then
 					break -- skip 7th card for stacks 5-8 (they have one card less from stacks 1-4)
 				end
 				local entry = deck_session[ index ]
 				entry.is_highlighted = false
+				entry.x = x
+				entry.y = y
 				table.insert( stack_table, entry )
 				index = index + 1
+				y = y + metrics.card_between_vertical_gap
 			end
 
 			table.insert( tableau, stack_table )
@@ -255,7 +267,42 @@ function Game.Update()
 
 		game_state = e_game_state.session
 	elseif game_state == e_game_state.session then
-		local card = GetStackHoveredCard()
+		local hovered_card = nil
+
+		if mouse.state == e_mouse_state.clicked then
+			hovered_card = GetStackHoveredCard()
+			if hovered_card then
+				table.insert( moving_stack, hovered_card )
+			end
+		end
+
+		if mouse.state == e_mouse_state.held then
+			if #moving_stack > 0 then
+				local card = nil
+				for i = 1, 8 do
+					local t = tableau[ i ]
+
+					for j = 1, #t do
+						if tableau[ i ][ j ].id == moving_stack[ #moving_stack ].id then
+							card = tableau[ i ][ j ]
+							table.remove( tableau[ i ], j )
+							break
+						end
+					end
+				end
+				-- if card then
+				-- 	-- card.x = mouse.x
+				-- 	-- card.y = mouse.y
+				-- 	print("drawing")
+				-- 	DrawCard(card, mouse.x, mouse.y)
+				-- end
+			end
+
+			-- if #moving_stack > 0 then
+			-- 	DrawCard( moving_stack[ #moving_stack], 0, 0 )
+			-- 	print(moving_stack[ #moving_stack].id)
+			-- end
+		end
 	end
 end
 
@@ -267,6 +314,9 @@ function Game.Render()
 	DrawSlots()
 	if game_state == e_game_state.session then
 		DrawTableau()
+		if #moving_stack > 0 then
+			DrawCard( moving_stack[ #moving_stack ], mouse.x, mouse.y )
+		end
 	end
 	-- DrawCard( deck_session[ 1 ], metrics.slot_start_left + metrics.slot_card_offset_left, metrics.slot_start_top + metrics.slot_card_offset_top )
 end
