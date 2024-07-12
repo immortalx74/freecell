@@ -190,18 +190,20 @@ local function ClearHighlight()
 end
 
 local function GetStackHoveredCard()
-	local index1, index2 = nil
+	local index1, index2, x, y = nil
+	local xx, yy
 	ClearHighlight()
 
 	for i, stack in ipairs( tableau ) do
-		local x = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_w + metrics.stacks_between_gap))
+		x = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_w + metrics.stacks_between_gap))
 
 		for j, card in ipairs( stack ) do
-			local y = metrics.stack_first_offset_top + ((j - 1) * metrics.card_between_vertical_gap)
+			y = metrics.stack_first_offset_top + ((j - 1) * metrics.card_between_vertical_gap)
 
 			local height = j == #stack and metrics.card_h or metrics.card_between_vertical_gap
 			if PointInRect( mouse.x, mouse.y, x, y, metrics.card_w, height ) then
 				index1, index2 = i, j
+				xx, yy = x, y
 				break
 			end
 			if index1 then break end
@@ -210,7 +212,7 @@ local function GetStackHoveredCard()
 
 	if index1 then
 		-- tableau[ index1 ][ index2 ].is_highlighted = true
-		return tableau[ index1 ][ index2 ]
+		return tableau[ index1 ][ index2 ], index1, index2, xx, yy
 	end
 	return nil
 end
@@ -234,7 +236,7 @@ function Game.Update()
 	if game_state == e_game_state.init then
 		-- Clear state
 		deck_session = {}
-		moving_stack = {}
+		moving_stack = { offset_x = 0, offset_y = 0 }
 		tableau = {}
 		home_cells = {}
 		free_cells = {}
@@ -267,41 +269,14 @@ function Game.Update()
 
 		game_state = e_game_state.session
 	elseif game_state == e_game_state.session then
-		local hovered_card = nil
-
 		if mouse.state == e_mouse_state.clicked then
-			hovered_card = GetStackHoveredCard()
-			if hovered_card then
-				table.insert( moving_stack, hovered_card )
+			local card, index1, index2, x, y = GetStackHoveredCard()
+			if card then
+				table.insert( moving_stack, card )
+				table.remove( tableau[ index1 ], index2 )
+				moving_stack.offset_x = mouse.x - x
+				moving_stack.offset_y = mouse.y - y
 			end
-		end
-
-		if mouse.state == e_mouse_state.held then
-			if #moving_stack > 0 then
-				local card = nil
-				for i = 1, 8 do
-					local t = tableau[ i ]
-
-					for j = 1, #t do
-						if tableau[ i ][ j ].id == moving_stack[ #moving_stack ].id then
-							card = tableau[ i ][ j ]
-							table.remove( tableau[ i ], j )
-							break
-						end
-					end
-				end
-				-- if card then
-				-- 	-- card.x = mouse.x
-				-- 	-- card.y = mouse.y
-				-- 	print("drawing")
-				-- 	DrawCard(card, mouse.x, mouse.y)
-				-- end
-			end
-
-			-- if #moving_stack > 0 then
-			-- 	DrawCard( moving_stack[ #moving_stack], 0, 0 )
-			-- 	print(moving_stack[ #moving_stack].id)
-			-- end
 		end
 	end
 end
@@ -315,7 +290,7 @@ function Game.Render()
 	if game_state == e_game_state.session then
 		DrawTableau()
 		if #moving_stack > 0 then
-			DrawCard( moving_stack[ #moving_stack ], mouse.x, mouse.y )
+			DrawCard( moving_stack[ #moving_stack ], mouse.x - moving_stack.offset_x, mouse.y - moving_stack.offset_y )
 		end
 	end
 	-- DrawCard( deck_session[ 1 ], metrics.slot_start_left + metrics.slot_card_offset_left, metrics.slot_start_top + metrics.slot_card_offset_top )
