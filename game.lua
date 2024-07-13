@@ -291,6 +291,12 @@ local function IsMoveStackAttemptValid( stack, start_index )
 	return true
 end
 
+local function IsDropStackAttemptValid( target_card )
+	local first_card = moving_stack[ 1 ]
+	if first_card.rank == target_card.rank - 1 and GetSuitColor( first_card.suit ) ~= GetSuitColor( target_card.suit ) then return true end
+	return false
+end
+
 local function SetMovingStack()
 	if #moving_stack == 0 then
 		local hovered_card, stack, first_index, x, y = GetStackHoveredCard()
@@ -314,17 +320,20 @@ end
 
 local function ReleaseMovingStack()
 	if #moving_stack > 0 then
-		-- TODO: Check for valid drop target or cancel,
 		-- TODO: For now we're only checking stacks as valid drop targets
 		local hovered_card, stack, last_index = GetStackHoveredCard()
 		if hovered_card then
 			if last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
-				-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
-				-- to effectively place them back in their original order
-				for i = #moving_stack, 1, -1 do
-					local card = moving_stack[ i ]
-					table.insert( tableau[ stack ], last_index + 1, card )
-					table.remove( moving_stack, i )
+				if IsDropStackAttemptValid( hovered_card ) then
+					-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
+					-- to effectively place them back in their original order
+					for i = #moving_stack, 1, -1 do
+						local card = moving_stack[ i ]
+						table.insert( tableau[ stack ], last_index + 1, card )
+						table.remove( moving_stack, i )
+					end
+				else
+					CancelMove()
 				end
 			else
 				CancelMove()
