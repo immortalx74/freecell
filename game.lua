@@ -116,6 +116,25 @@ local function DrawMovingStack()
 	end
 end
 
+local function DrawFreeCells()
+	local top = metrics.slot_start_top
+
+	for i, v in ipairs( free_cells ) do
+		local left = metrics.slot_start_left + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
+		DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+	end
+end
+
+local function DrawHomeCells()
+	local top = metrics.slot_start_top
+	local home_offset = (4 * metrics.slot_width) + (3 * metrics.slot_between_gap) + metrics.freecell_homecell_gap
+
+	for i, v in ipairs( home_cells ) do
+		local left = metrics.slot_start_left + home_offset + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
+		DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+	end
+end
+
 local function Shuffle( t ) -- https://gist.github.com/Uradamus/10323382?permalink_comment_id=3149506#gistcomment-3149506
 	local tbl = {}
 	for i = 1, #t do
@@ -383,6 +402,8 @@ function Game.Render()
 	DrawSlots()
 	if game_state == e_game_state.session then
 		DrawTableau()
+		DrawFreeCells()
+		DrawHomeCells()
 		DrawMovingStack()
 	end
 end
