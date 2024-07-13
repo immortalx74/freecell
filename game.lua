@@ -243,6 +243,11 @@ local function ClearState()
 	deck_session = Shuffle( deck_ordered )
 end
 
+local function GetSuitColor( suit )
+	if suit == "hearts" or suit == "diamonds" then return "red" end
+	return "black"
+end
+
 local function PopulateTableau()
 	local index = 1
 
@@ -269,19 +274,38 @@ local function PopulateTableau()
 	end
 end
 
+local function IsMoveStackAttemptValid( stack, start_index )
+	local cur_rank = tableau[ stack ][ start_index ].rank
+	local cur_color = GetSuitColor( tableau[ stack ][ start_index ].suit )
+
+	for i = start_index + 1, #tableau[ stack ] do
+		local card = tableau[ stack ][ i ]
+		if card.rank ~= cur_rank - 1 or GetSuitColor( card.suit ) == cur_color then
+			return false
+		else
+			cur_rank = card.rank
+			cur_color = GetSuitColor( card.suit )
+		end
+	end
+
+	return true
+end
+
 local function SetMovingStack()
 	if #moving_stack == 0 then
-		local card, index1, index2, x, y = GetStackHoveredCard()
+		local hovered_card, stack, first_index, x, y = GetStackHoveredCard()
 
-		-- TODO: Check if card(s) can actually be moved
+		if hovered_card then
+			if not IsMoveStackAttemptValid( stack, first_index ) then return end
 
-
-
-		if card then
-			card.original_stack = index1
-			card.original_index = index2
-			table.insert( moving_stack, card )
-			table.remove( tableau[ index1 ], index2 )
+			-- traverse the tableau table backwards but add to the moving_stack table in reverse order
+			for i = #tableau[ stack ], first_index, -1 do
+				local card = tableau[ stack ][ i ]
+				card.original_stack = stack
+				card.original_index = i
+				table.insert( moving_stack, 1, card )
+				table.remove( tableau[ stack ], i )
+			end
 			moving_stack.offset_x = mouse.x - x
 			moving_stack.offset_y = mouse.y - y
 		end
@@ -292,12 +316,16 @@ local function ReleaseMovingStack()
 	if #moving_stack > 0 then
 		-- TODO: Check for valid drop target or cancel,
 		-- TODO: For now we're only checking stacks as valid drop targets
-		local card, i1, i2 = GetStackHoveredCard()
-		if card then
-			if i2 == #tableau[ i1 ] then -- See if it's the bottom card of the stack we're dropping on to
-				local card = moving_stack[ 1 ]
-				table.insert( tableau[ i1 ], card )
-				table.remove( moving_stack, 1 )
+		local hovered_card, stack, last_index = GetStackHoveredCard()
+		if hovered_card then
+			if last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
+				-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
+				-- to effectively place them back in their original order
+				for i = #moving_stack, 1, -1 do
+					local card = moving_stack[ i ]
+					table.insert( tableau[ stack ], last_index + 1, card )
+					table.remove( moving_stack, i )
+				end
 			else
 				CancelMove()
 			end
