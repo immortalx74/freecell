@@ -108,6 +108,12 @@ local function DrawTableau()
 end
 
 local function DrawMovingStack()
+	if #moving_stack > 0 then
+		for i, v in ipairs( moving_stack ) do
+			local vert_offset = (i - 1) * metrics.card_between_vertical_gap
+			DrawCard( v, mouse.x - moving_stack.offset_x, mouse.y - moving_stack.offset_y + vert_offset )
+		end
+	end
 end
 
 local function Shuffle( t ) -- https://gist.github.com/Uradamus/10323382?permalink_comment_id=3149506#gistcomment-3149506
@@ -217,6 +223,90 @@ local function GetStackHoveredCard()
 	return nil
 end
 
+local function CancelMove()
+	-- Cancel and move cards back to their original positions
+	for i, v in ipairs( moving_stack ) do
+		local stack = v.original_stack
+		local index = v.original_index
+		table.insert( tableau[ stack ], index, v )
+	end
+	moving_stack = nil
+	moving_stack = { offset_x = 0, offset_y = 0 }
+end
+
+local function ClearState()
+	deck_session = {}
+	moving_stack = { offset_x = 0, offset_y = 0 }
+	tableau = {}
+	home_cells = {}
+	free_cells = {}
+	deck_session = Shuffle( deck_ordered )
+end
+
+local function PopulateTableau()
+	local index = 1
+
+	for stack = 1, 8 do
+		local stack_table = {}
+
+		local x = metrics.stack_first_offset_left + ((stack - 1) * (metrics.card_w + metrics.stacks_between_gap))
+		local y = metrics.stack_first_offset_top
+
+		for card = 1, 7 do
+			if card == 7 and stack > 4 then
+				break -- skip 7th card for stacks 5-8 (they have one card less from stacks 1-4)
+			end
+			local entry = deck_session[ index ]
+			entry.is_highlighted = false
+			entry.x = x
+			entry.y = y
+			table.insert( stack_table, entry )
+			index = index + 1
+			y = y + metrics.card_between_vertical_gap
+		end
+
+		table.insert( tableau, stack_table )
+	end
+end
+
+local function SetMovingStack()
+	if #moving_stack == 0 then
+		local card, index1, index2, x, y = GetStackHoveredCard()
+
+		-- TODO: Check if card(s) can actually be moved
+
+
+
+		if card then
+			card.original_stack = index1
+			card.original_index = index2
+			table.insert( moving_stack, card )
+			table.remove( tableau[ index1 ], index2 )
+			moving_stack.offset_x = mouse.x - x
+			moving_stack.offset_y = mouse.y - y
+		end
+	end
+end
+
+local function ReleaseMovingStack()
+	if #moving_stack > 0 then
+		-- TODO: Check for valid drop target or cancel,
+		-- TODO: For now we're only checking stacks as valid drop targets
+		local card, i1, i2 = GetStackHoveredCard()
+		if card then
+			if i2 == #tableau[ i1 ] then -- See if it's the bottom card of the stack we're dropping on to
+				local card = moving_stack[ 1 ]
+				table.insert( tableau[ i1 ], card )
+				table.remove( moving_stack, 1 )
+			else
+				CancelMove()
+			end
+		else
+			CancelMove()
+		end
+	end
+end
+
 function Game.Init()
 	math.randomseed( os.time() )
 
@@ -234,49 +324,16 @@ function Game.Update()
 	TrackMouseState()
 
 	if game_state == e_game_state.init then
-		-- Clear state
-		deck_session = {}
-		moving_stack = { offset_x = 0, offset_y = 0 }
-		tableau = {}
-		home_cells = {}
-		free_cells = {}
-		deck_session = Shuffle( deck_ordered )
-
-		-- Populate tableau
-		local index = 1
-
-		for stack = 1, 8 do
-			local stack_table = {}
-
-			local x = metrics.stack_first_offset_left + ((stack - 1) * (metrics.card_w + metrics.stacks_between_gap))
-			local y = metrics.stack_first_offset_top
-
-			for card = 1, 7 do
-				if card == 7 and stack > 4 then
-					break -- skip 7th card for stacks 5-8 (they have one card less from stacks 1-4)
-				end
-				local entry = deck_session[ index ]
-				entry.is_highlighted = false
-				entry.x = x
-				entry.y = y
-				table.insert( stack_table, entry )
-				index = index + 1
-				y = y + metrics.card_between_vertical_gap
-			end
-
-			table.insert( tableau, stack_table )
-		end
-
+		ClearState()
+		PopulateTableau()
 		game_state = e_game_state.session
 	elseif game_state == e_game_state.session then
 		if mouse.state == e_mouse_state.clicked then
-			local card, index1, index2, x, y = GetStackHoveredCard()
-			if card then
-				table.insert( moving_stack, card )
-				table.remove( tableau[ index1 ], index2 )
-				moving_stack.offset_x = mouse.x - x
-				moving_stack.offset_y = mouse.y - y
-			end
+			SetMovingStack()
+		end
+
+		if mouse.state == e_mouse_state.released then
+			ReleaseMovingStack()
 		end
 	end
 end
@@ -289,11 +346,8 @@ function Game.Render()
 	DrawSlots()
 	if game_state == e_game_state.session then
 		DrawTableau()
-		if #moving_stack > 0 then
-			DrawCard( moving_stack[ #moving_stack ], mouse.x - moving_stack.offset_x, mouse.y - moving_stack.offset_y )
-		end
+		DrawMovingStack()
 	end
-	-- DrawCard( deck_session[ 1 ], metrics.slot_start_left + metrics.slot_card_offset_left, metrics.slot_start_top + metrics.slot_card_offset_top )
 end
 
 return Game

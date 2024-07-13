@@ -3,4 +3,5 @@ function lovr.conf( t )
 	t.window.resizable = true
 	t.window.width = 1000
 	t.window.height = 625
+	t.graphics.vsync = false
 end
