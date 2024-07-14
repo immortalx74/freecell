@@ -10,7 +10,7 @@ end
 
 function lovr.keypressed( key, scancode, repeating )
 	UI2D.KeyPressed( key, repeating )
-	if key == "f1" then
+	if key == "f2" then
 		game_state = e_game_state.init
 	end
 end

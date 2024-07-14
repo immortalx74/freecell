@@ -78,7 +78,7 @@ end
 
 local function DrawInfo()
 	window.pass:setColor( 0.66, 0.66, 0.66 )
-	window.pass:text( "Press F1 for new game", window.tex_w * metrics.text_left,
+	window.pass:text( "Press F2 for new game", window.tex_w * metrics.text_left,
 		window.tex_h * metrics.text_top, 0, window.tex_w * metrics.text_scale )
 end
 
@@ -358,6 +358,19 @@ local function CanDropToStack( target_card )
 	return false
 end
 
+local function CanDropToHome( home_hovered_card, home_slot_index )
+	if home_hovered_card then
+		if moving_stack[ 1 ].rank == home_hovered_card.rank + 1 and moving_stack[ 1 ].suit == home_hovered_card.suit then
+			return true
+		end
+	elseif home_slot_index then -- Only Ace can drop to empty home cell
+		if moving_stack[ 1 ].rank == 1 then
+			return true
+		end
+	end
+	return false
+end
+
 local function IsHoveredStackEmpty()
 	local top = metrics.stack_first_offset_top
 	for i, v in ipairs( tableau ) do
@@ -409,13 +422,19 @@ end
 
 local function ReleaseMovingStack()
 	if #moving_stack > 0 then
-		---------- FREE CELLS ----------
-		if #moving_stack == 1 then              -- Can only release a single card in free cells
-			local free_hovered_card, slot_index = GetFreeCellsHovered()
-			if not free_hovered_card and slot_index then -- Empty slot
-				free_cells[ slot_index ] = moving_stack[ 1 ]
+		---------- FREE CELLS / HOME CELLS ----------
+		if #moving_stack == 1 then                   -- Can only release a single card in free cells/ home cells
+			local free_hovered_card, free_slot_index = GetFreeCellsHovered()
+			if not free_hovered_card and free_slot_index then -- Empty slot
+				free_cells[ free_slot_index ] = moving_stack[ 1 ]
 				table.remove( moving_stack, 1 )
-				return
+			end
+
+			local home_hovered_card, home_slot_index = GetHomeCellsHovered()
+			if CanDropToHome( home_hovered_card, home_slot_index ) then
+				-- TODO: Test for correct order
+				home_cells[ home_slot_index ] = moving_stack[ 1 ]
+				table.remove( moving_stack, 1 )
 			end
 		end
 
