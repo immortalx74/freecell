@@ -46,6 +46,7 @@ function lovr.draw( pass )
 	UI2D.Begin( "main", 0, 450 )
 	UI2D.Label( "game state:" .. game_state )
 	UI2D.Label( tostring( window.tex_w ) )
+	UI2D.Label( tostring( #tableau[5] ) )
 	if UI2D.Button( "Shuffle..." ) then
 		game_state = e_game_state.init
 	end

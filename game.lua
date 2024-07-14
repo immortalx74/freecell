@@ -335,7 +335,7 @@ local function PopulateTableau()
 	end
 end
 
-local function IsMoveStackAttemptValid( stack, start_index )
+local function CanMoveFromStack( stack, start_index )
 	local cur_rank = tableau[ stack ][ start_index ].rank
 	local cur_color = GetSuitColor( tableau[ stack ][ start_index ].suit )
 
@@ -352,9 +352,20 @@ local function IsMoveStackAttemptValid( stack, start_index )
 	return true
 end
 
-local function IsDropStackAttemptValid( target_card )
+local function CanDropToStack( target_card )
 	local first_card = moving_stack[ 1 ]
 	if first_card.rank == target_card.rank - 1 and GetSuitColor( first_card.suit ) ~= GetSuitColor( target_card.suit ) then return true end
+	return false
+end
+
+local function IsHoveredStackEmpty()
+	local top = metrics.stack_first_offset_top
+	for i, v in ipairs( tableau ) do
+		local left = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_width + metrics.stacks_between_gap))
+		if PointInRect( mouse.x, mouse.y, left, top, metrics.card_width, metrics.card_height ) then
+			return true, i
+		end
+	end
 	return false
 end
 
@@ -379,7 +390,7 @@ local function SetMovingStack()
 		local stack_hovered_card, stack, first_index, x, y = GetStackHoveredCard()
 
 		if stack_hovered_card then
-			if IsMoveStackAttemptValid( stack, first_index ) then
+			if CanMoveFromStack( stack, first_index ) then
 				-- traverse the tableau table backwards but add to the moving_stack table in reverse order
 				for i = #tableau[ stack ], first_index, -1 do
 					local card = tableau[ stack ][ i ]
@@ -404,6 +415,7 @@ local function ReleaseMovingStack()
 			if not free_hovered_card and slot_index then -- Empty slot
 				free_cells[ slot_index ] = moving_stack[ 1 ]
 				table.remove( moving_stack, 1 )
+				return
 			end
 		end
 
@@ -411,7 +423,7 @@ local function ReleaseMovingStack()
 		local stack_hovered_card, stack, last_index = GetStackHoveredCard()
 		if stack_hovered_card then
 			if last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
-				if IsDropStackAttemptValid( stack_hovered_card ) then
+				if CanDropToStack( stack_hovered_card ) then
 					-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
 					-- to effectively place them back in their original order
 					for i = #moving_stack, 1, -1 do
@@ -426,7 +438,16 @@ local function ReleaseMovingStack()
 				CancelMove()
 			end
 		else
-			CancelMove()
+			local is_empty, stack = IsHoveredStackEmpty()
+			if is_empty then
+				for i = #moving_stack, 1, -1 do
+					local card = moving_stack[ i ]
+					table.insert( tableau[ stack ], 1, card )
+					table.remove( moving_stack, i )
+				end
+			else
+				CancelMove()
+			end
 		end
 	end
 end
