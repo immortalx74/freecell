@@ -29,6 +29,9 @@ local function UpdateMetrics()
 	metrics.stack_first_offset_left = 0.078 * window.tex_w
 	metrics.stack_first_offset_top = 0.2992 * window.tex_h
 	metrics.stacks_between_gap = 0.019 * window.tex_w
+	metrics.text_scale = 0.017
+	metrics.text_left = 0.093
+	metrics.text_top = 0.015
 end
 
 local function WindowWasResized()
@@ -71,6 +74,12 @@ local function DrawCard( card, x, y )
 		window.pass:setMaterial()
 		window.pass:plane( x + (metrics.card_width / 2), y + (metrics.card_height / 2), 0, metrics.card_width, -metrics.card_height, 0, 0, 0, 0, "line" )
 	end
+end
+
+local function DrawInfo()
+	window.pass:setColor( 0.66, 0.66, 0.66 )
+	window.pass:text( "Press F1 for new game", window.tex_w * metrics.text_left,
+		window.tex_h * metrics.text_top, 0, window.tex_w * metrics.text_scale )
 end
 
 local function DrawSlots()
@@ -464,6 +473,7 @@ function Game.Render()
 		DrawFreeCells()
 		DrawHomeCells()
 		DrawMovingStack()
+		DrawInfo()
 	end
 end
 
