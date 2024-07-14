@@ -15,8 +15,8 @@ local function GetSuit( str )
 end
 
 local function UpdateMetrics()
-	metrics.card_w = 0.089 * window.tex_w
-	metrics.card_h = 0.1935 * window.tex_h
+	metrics.card_width = 0.089 * window.tex_w
+	metrics.card_height = 0.1935 * window.tex_h
 	metrics.slot_start_left = 0.018 * window.tex_w
 	metrics.slot_start_top = 0.037 * window.tex_h
 	metrics.slot_card_offset_left = 0.005 * window.tex_w
@@ -63,13 +63,13 @@ end
 local function DrawCard( card, x, y )
 	window.pass:setColor( 1, 1, 1 )
 	window.pass:setMaterial( card.tex )
-	window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w, -metrics.card_h )
+	window.pass:plane( x + (metrics.card_width / 2), y + (metrics.card_height / 2), 0, metrics.card_width, -metrics.card_height )
 	if card.is_highlighted then
 		window.pass:setMaterial( highlight_tex )
-		window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w + 10, -metrics.card_h - 10 )
+		window.pass:plane( x + (metrics.card_width / 2), y + (metrics.card_height / 2), 0, metrics.card_width + 10, -metrics.card_height - 10 )
 		window.pass:setColor( 0, 0, 0 )
 		window.pass:setMaterial()
-		window.pass:plane( x + (metrics.card_w / 2), y + (metrics.card_h / 2), 0, metrics.card_w, -metrics.card_h, 0, 0, 0, 0, "line" )
+		window.pass:plane( x + (metrics.card_width / 2), y + (metrics.card_height / 2), 0, metrics.card_width, -metrics.card_height, 0, 0, 0, 0, "line" )
 	end
 end
 
@@ -92,7 +92,7 @@ local function DrawSlots()
 end
 
 local function DrawStack( num )
-	local left = metrics.stack_first_offset_left + ((num - 1) * (metrics.card_w + metrics.stacks_between_gap))
+	local left = metrics.stack_first_offset_left + ((num - 1) * (metrics.card_width + metrics.stacks_between_gap))
 	local top = metrics.stack_first_offset_top
 
 	for i, v in ipairs( tableau[ num ] ) do
@@ -121,7 +121,9 @@ local function DrawFreeCells()
 
 	for i, v in ipairs( free_cells ) do
 		local left = metrics.slot_start_left + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
-		DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+		if v then
+			DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+		end
 	end
 end
 
@@ -131,7 +133,9 @@ local function DrawHomeCells()
 
 	for i, v in ipairs( home_cells ) do
 		local left = metrics.slot_start_left + home_offset + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
-		DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+		if v then
+			DrawCard( v, left + metrics.slot_card_offset_left, top + metrics.slot_card_offset_top )
+		end
 	end
 end
 
@@ -215,31 +219,54 @@ local function ClearHighlight()
 end
 
 local function GetStackHoveredCard()
-	local index1, index2, x, y = nil
+	local stack, index, x, y = nil
 	local xx, yy
 	ClearHighlight()
 
-	for i, stack in ipairs( tableau ) do
-		x = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_w + metrics.stacks_between_gap))
+	for i, v in ipairs( tableau ) do
+		x = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_width + metrics.stacks_between_gap))
 
-		for j, card in ipairs( stack ) do
+		for j, card in ipairs( v ) do
 			y = metrics.stack_first_offset_top + ((j - 1) * metrics.card_between_vertical_gap)
 
-			local height = j == #stack and metrics.card_h or metrics.card_between_vertical_gap
-			if PointInRect( mouse.x, mouse.y, x, y, metrics.card_w, height ) then
-				index1, index2 = i, j
+			local height = j == #v and metrics.card_height or metrics.card_between_vertical_gap
+			if PointInRect( mouse.x, mouse.y, x, y, metrics.card_width, height ) then
+				stack, index = i, j
 				xx, yy = x, y
 				break
 			end
-			if index1 then break end
+			if stack then break end
 		end
 	end
 
-	if index1 then
-		-- tableau[ index1 ][ index2 ].is_highlighted = true
-		return tableau[ index1 ][ index2 ], index1, index2, xx, yy
+	if stack then
+		-- tableau[ stack ][ index ].is_highlighted = true
+		return tableau[ stack ][ index ], stack, index, xx, yy
 	end
 	return nil
+end
+
+local function GetFreeCellsHovered()
+	local top = metrics.slot_start_top + metrics.slot_card_offset_top
+
+	for i = 1, 4 do
+		local left = metrics.slot_start_left + metrics.slot_card_offset_left + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
+		if PointInRect( mouse.x, mouse.y, left, top, metrics.card_width, metrics.card_height ) then
+			return free_cells[ i ], i
+		end
+	end
+end
+
+local function GetHomeCellsHovered()
+	local top = metrics.slot_start_top + metrics.slot_card_offset_top
+	local home_offset = (4 * metrics.slot_width) + (3 * metrics.slot_between_gap) + metrics.freecell_homecell_gap
+
+	for i = 1, 4 do
+		local left = metrics.slot_start_left + metrics.slot_card_offset_left + home_offset + ((i - 1) * (metrics.slot_width + metrics.slot_between_gap))
+		if PointInRect( mouse.x, mouse.y, left, top, metrics.card_width, metrics.card_height ) then
+			return home_cells[ i ], i
+		end
+	end
 end
 
 local function CancelMove()
@@ -247,7 +274,13 @@ local function CancelMove()
 	for i, v in ipairs( moving_stack ) do
 		local stack = v.original_stack
 		local index = v.original_index
-		table.insert( tableau[ stack ], index, v )
+		local slot = v.original_slot
+
+		if slot and not stack then -- This card was moved from a free_cell slot
+			free_cells[ slot ] = v
+		else                 -- Otherwise it (or them if more than one) were coming from stacks
+			table.insert( tableau[ stack ], index, v )
+		end
 	end
 	moving_stack = nil
 	moving_stack = { offset_x = 0, offset_y = 0 }
@@ -257,8 +290,8 @@ local function ClearState()
 	deck_session = {}
 	moving_stack = { offset_x = 0, offset_y = 0 }
 	tableau = {}
-	home_cells = {}
-	free_cells = {}
+	home_cells = { false, false, false, false }
+	free_cells = { false, false, false, false }
 	deck_session = Shuffle( deck_ordered )
 end
 
@@ -273,7 +306,7 @@ local function PopulateTableau()
 	for stack = 1, 8 do
 		local stack_table = {}
 
-		local x = metrics.stack_first_offset_left + ((stack - 1) * (metrics.card_w + metrics.stacks_between_gap))
+		local x = metrics.stack_first_offset_left + ((stack - 1) * (metrics.card_width + metrics.stacks_between_gap))
 		local y = metrics.stack_first_offset_top
 
 		for card = 1, 7 do
@@ -318,32 +351,58 @@ end
 
 local function SetMovingStack()
 	if #moving_stack == 0 then
-		local hovered_card, stack, first_index, x, y = GetStackHoveredCard()
+		---------- MOVE CARD FROM FREE CELLS ----------
+		local free_hovered_card, slot_index = GetFreeCellsHovered()
+		if free_hovered_card then
+			free_hovered_card.original_stack = nil
+			free_hovered_card.original_index = nil
+			free_hovered_card.original_slot = slot_index
+			table.insert( moving_stack, free_hovered_card )
+			free_cells[ slot_index ] = false
 
-		if hovered_card then
-			if not IsMoveStackAttemptValid( stack, first_index ) then return end
+			local left = metrics.slot_start_left + metrics.slot_card_offset_left + ((slot_index - 1) * (metrics.slot_width + metrics.slot_between_gap))
+			local top = metrics.slot_start_top + metrics.slot_card_offset_top
+			moving_stack.offset_x = mouse.x - left
+			moving_stack.offset_y = mouse.y - top
+		end
 
-			-- traverse the tableau table backwards but add to the moving_stack table in reverse order
-			for i = #tableau[ stack ], first_index, -1 do
-				local card = tableau[ stack ][ i ]
-				card.original_stack = stack
-				card.original_index = i
-				table.insert( moving_stack, 1, card )
-				table.remove( tableau[ stack ], i )
+		---------- MOVE CARD(S) FROM STACKS ----------
+		local stack_hovered_card, stack, first_index, x, y = GetStackHoveredCard()
+
+		if stack_hovered_card then
+			if IsMoveStackAttemptValid( stack, first_index ) then
+				-- traverse the tableau table backwards but add to the moving_stack table in reverse order
+				for i = #tableau[ stack ], first_index, -1 do
+					local card = tableau[ stack ][ i ]
+					card.original_stack = stack
+					card.original_index = i
+					table.insert( moving_stack, 1, card )
+					table.remove( tableau[ stack ], i )
+				end
+
+				moving_stack.offset_x = mouse.x - x
+				moving_stack.offset_y = mouse.y - y
 			end
-			moving_stack.offset_x = mouse.x - x
-			moving_stack.offset_y = mouse.y - y
 		end
 	end
 end
 
 local function ReleaseMovingStack()
 	if #moving_stack > 0 then
-		-- TODO: For now we're only checking stacks as valid drop targets
-		local hovered_card, stack, last_index = GetStackHoveredCard()
-		if hovered_card then
+		---------- FREE CELLS ----------
+		if #moving_stack == 1 then              -- Can only release a single card in free cells
+			local free_hovered_card, slot_index = GetFreeCellsHovered()
+			if not free_hovered_card and slot_index then -- Empty slot
+				free_cells[ slot_index ] = moving_stack[ 1 ]
+				table.remove( moving_stack, 1 )
+			end
+		end
+
+		---------- STACKS ----------
+		local stack_hovered_card, stack, last_index = GetStackHoveredCard()
+		if stack_hovered_card then
 			if last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
-				if IsDropStackAttemptValid( hovered_card ) then
+				if IsDropStackAttemptValid( stack_hovered_card ) then
 					-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
 					-- to effectively place them back in their original order
 					for i = #moving_stack, 1, -1 do

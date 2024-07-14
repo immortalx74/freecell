@@ -55,6 +55,6 @@ deck_ordered  = {
 
 deck_session  = {}
 moving_stack  = {}
-free_cells    = {}
-home_cells    = {}
+free_cells    = { false, false, false, false }
+home_cells    = { false, false, false, false }
 tableau       = {}
