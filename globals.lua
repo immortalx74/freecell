@@ -37,7 +37,8 @@ e_mouse_state = {
 e_game_state  = {
 	init = 1,
 	session = 2,
-	win = 3
+	win = 3,
+	autosolve = 4
 }
 
 game_state    = e_game_state.init

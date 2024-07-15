@@ -13,6 +13,10 @@ function lovr.keypressed( key, scancode, repeating )
 	if key == "f2" then
 		game_state = e_game_state.init
 	end
+
+	if key == "return" then
+		game_state = e_game_state.autosolve
+	end
 end
 
 function lovr.textinput( text, code )

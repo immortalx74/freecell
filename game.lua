@@ -30,7 +30,7 @@ local function UpdateMetrics()
 	metrics.stack_first_offset_top = 0.2992 * window.tex_h
 	metrics.stacks_between_gap = 0.019 * window.tex_w
 	metrics.text_scale = 0.017
-	metrics.text_left = 0.093
+	metrics.text_left = 0.178
 	metrics.text_top = 0.015
 end
 
@@ -78,7 +78,7 @@ end
 
 local function DrawInfo()
 	window.pass:setColor( 0.66, 0.66, 0.66 )
-	window.pass:text( "Press F2 for new game", window.tex_w * metrics.text_left,
+	window.pass:text( "Press F2 for new game, ENTER to autocomplete", window.tex_w * metrics.text_left,
 		window.tex_h * metrics.text_top, 0, window.tex_w * metrics.text_scale )
 end
 
@@ -471,6 +471,48 @@ local function ReleaseMovingStack()
 	end
 end
 
+local function AutoSolve()
+	while true do
+		local found = false
+		local candidate_card = nil
+
+		for i = #tableau, 1, -1 do
+			local stack = tableau[ i ]
+			local stack_last_card = stack[ #stack ]
+
+			if stack_last_card and stack_last_card.rank == 1 then
+				candidate_card = stack_last_card
+				for j, slot in ipairs( home_cells ) do
+					if slot == false then -- means empty
+						home_cells[ j ] = candidate_card
+						table.remove( tableau[ i ], #stack )
+						break
+					end
+				end
+			else
+				for j, slot in ipairs( home_cells ) do
+					if stack_last_card and slot and stack_last_card.rank == home_cells[ j ].rank + 1 and stack_last_card.suit == home_cells[ j ].suit then
+						candidate_card = stack_last_card
+						home_cells[ j ] = candidate_card
+						table.remove( tableau[ i ], #stack )
+						break
+					end
+				end
+			end
+			if candidate_card then
+				found = true
+				break
+			else
+				found = false
+			end
+		end
+
+
+
+		if not found then return end
+	end
+end
+
 function Game.Init()
 	math.randomseed( os.time() )
 
@@ -499,6 +541,9 @@ function Game.Update()
 		if mouse.state == e_mouse_state.released then
 			ReleaseMovingStack()
 		end
+	elseif game_state == e_game_state.autosolve then
+		AutoSolve()
+		game_state = e_game_state.session
 	end
 end
 
