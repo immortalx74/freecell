@@ -1,2 +1,2 @@
 Simple Freecell implementation.
-No prompts, popups, animations etc.
+No undo, prompts, popups, animations etc.
