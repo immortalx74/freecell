@@ -225,12 +225,16 @@ local function ClearHighlight()
 			tableau[ i ][ j ].is_highlighted = false
 		end
 	end
+
+	for i = 1, 4 do
+		if free_cells[ i ] then free_cells[ i ].is_highlighted = false end
+		if home_cells[ i ] then home_cells[ i ].is_highlighted = false end
+	end
 end
 
 local function GetStackHoveredCard()
 	local stack, index, x, y = nil
 	local xx, yy
-	ClearHighlight()
 
 	for i, v in ipairs( tableau ) do
 		x = metrics.stack_first_offset_left + ((i - 1) * (metrics.card_width + metrics.stacks_between_gap))
@@ -249,7 +253,6 @@ local function GetStackHoveredCard()
 	end
 
 	if stack then
-		-- tableau[ stack ][ index ].is_highlighted = true
 		return tableau[ stack ][ index ], stack, index, xx, yy
 	end
 	return nil
@@ -392,6 +395,16 @@ local function NumEmptyFreeCells()
 	end
 
 	return sum
+end
+
+local function SetHighlight()
+	local stack_hovered_card, stack = GetStackHoveredCard()
+	if stack_hovered_card then
+		stack_hovered_card.is_highlighted = true
+	end
+
+	local free_card_hovered = GetFreeCellsHovered()
+	if free_card_hovered then free_card_hovered.is_highlighted = true end
 end
 
 local function NumEmptyStacks()
@@ -563,6 +576,7 @@ function Game.Update()
 		PopulateTableau()
 		game_state = e_game_state.session
 	elseif game_state == e_game_state.session then
+		SetHighlight()
 		if mouse.state == e_mouse_state.clicked then
 			SetMovingStack()
 		end
@@ -588,6 +602,7 @@ function Game.Render()
 		DrawHomeCells()
 		DrawMovingStack()
 		DrawInfo()
+		ClearHighlight()
 	end
 end
 
