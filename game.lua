@@ -471,7 +471,7 @@ local function ReleaseMovingStack()
 	end
 end
 
-local function AutoSolve()
+local function AutoComplete()
 	while true do
 		local found = false
 		local candidate_card = nil
@@ -541,8 +541,8 @@ function Game.Update()
 		if mouse.state == e_mouse_state.released then
 			ReleaseMovingStack()
 		end
-	elseif game_state == e_game_state.autosolve then
-		AutoSolve()
+	elseif game_state == e_game_state.autocomplete then
+		AutoComplete()
 		game_state = e_game_state.session
 	end
 end
