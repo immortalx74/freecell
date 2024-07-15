@@ -549,7 +549,28 @@ local function AutoComplete()
 			end
 		end
 
+		-- Do a 2nd pass for free cells this time
+		if not found then
+			for i = 4, 1, -1 do
+				if free_cells[ i ] then
+					for j, slot in ipairs( home_cells ) do
+						if free_cells[ i ].rank == home_cells[ j ].rank + 1 and free_cells[ i ].suit == home_cells[ j ].suit then
+							candidate_card = free_cells[ i ]
+							home_cells[ j ] = candidate_card
+							table.remove( free_cells, i )
+							break
+						end
+					end
+				end
+			end
 
+			if candidate_card then
+				found = true
+				break
+			else
+				found = false
+			end
+		end
 
 		if not found then return end
 	end
