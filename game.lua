@@ -382,6 +382,30 @@ local function IsHoveredStackEmpty()
 	return false
 end
 
+local function NumEmptyFreeCells()
+	local sum = 0
+
+	for i, v in ipairs( free_cells ) do
+		if not v then
+			sum = sum + 1
+		end
+	end
+
+	return sum
+end
+
+local function NumEmptyStacks()
+	local sum = 0
+
+	for i, v in ipairs( tableau ) do
+		if #v == 0 then
+			sum = sum + 1
+		end
+	end
+
+	return sum
+end
+
 local function SetMovingStack()
 	if #moving_stack == 0 then
 		---------- MOVE CARD FROM FREE CELLS ----------
@@ -441,7 +465,10 @@ local function ReleaseMovingStack()
 		---------- STACKS ----------
 		local stack_hovered_card, stack, last_index = GetStackHoveredCard()
 		if stack_hovered_card then
-			if last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
+			local max_allowed = (NumEmptyFreeCells() + 1) * (NumEmptyStacks() + 1)
+			local allowed = #moving_stack <= max_allowed
+
+			if allowed and last_index == #tableau[ stack ] then -- See if it's the bottom card of the stack we're dropping on to
 				if CanDropToStack( stack_hovered_card ) then
 					-- traverse the moving_stack table backwards but ALWAYS add to the same position (the "last_index + 1" part)
 					-- to effectively place them back in their original order
@@ -456,9 +483,11 @@ local function ReleaseMovingStack()
 			else
 				CancelMove()
 			end
-		else
+		else -- Drop on empty stack
 			local is_empty, stack = IsHoveredStackEmpty()
-			if is_empty then
+			local max_allowed = (NumEmptyFreeCells() + 1) * (NumEmptyStacks())
+			local allowed = #moving_stack <= max_allowed
+			if allowed and is_empty then
 				for i = #moving_stack, 1, -1 do
 					local card = moving_stack[ i ]
 					table.insert( tableau[ stack ], 1, card )
